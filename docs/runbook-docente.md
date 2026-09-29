@@ -26,11 +26,11 @@ el `INPUT` de iptables, así que **no abras otros puertos en OCI**: es la única
 | 5 | `./scripts/11-dns-cloudflare.sh` (wildcard `*.iscoutb.dev`) | hecho |
 | 6 | `sudo ./scripts/03-certificado-wildcard.sh` | hecho (vence 27-dic-2026, renovación automática) |
 | 7 | Settings → Profile → API/CLI → Generate (**sin límite de peticiones**, sin vencimiento); pegar en `.env` como `DOKPLOY_API_KEY` | hecho |
-| 8 | GitHub App (más abajo). Opcional: sin ella los equipos usan el origen *Git* con su repositorio público | pendiente |
+| 8 | GitHub App (más abajo) | hecho; **pendiente restringirla a los repositorios `AS_202620_*`** (hoy ve toda la organización) |
 | 9 | `./scripts/04-configurar-dokploy.py --email-acme <correo>` | hecho (falta compartir GitHub tras el paso 8) |
 | 10 | `sudo ./scripts/05-post-instalacion.sh` (cierra el 3000, instala el cron) | hecho |
 | 11 | Correos de Moodle en `equipos/integrantes.csv` | hecho |
-| 12 | `./scripts/10-aprovisionar-equipos.py --cuentas` (proyectos y cuentas); `--compose` solo con la GitHub App | hecho (86 cuentas, 23 proyectos) |
+| 12 | `./scripts/10-aprovisionar-equipos.py --cuentas --compose` (proyectos, cuentas y servicio `sistema` por equipo) | hecho (86 cuentas, 23 proyectos, 23 servicios) |
 | 13 | Entregar a cada estudiante su fila de `equipos/credenciales.csv` (privado, sin servidor de correo) | pendiente |
 
 Tras el paso 10 el panel **solo** es accesible en https://panel.iscoutb.dev.

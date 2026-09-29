@@ -116,28 +116,20 @@ curl -s http://localhost:8000/health      # ajusta el puerto con un "ports:" SOL
 
 Haz *commit* y *push* de `deploy/compose.lab.yaml` y de los Dockerfile a la rama de la tabla del apartado 2.
 
-### 3.5 Crea el servicio en el panel
+### 3.5 Tu servicio ya está creado: configúralo
 
-1. En el panel abre tu proyecto → entorno **production** → **Create Service → Compose**.
-2. Nombre: `sistema`. Tipo: **Docker Compose**.
-3. En **Provider** elige **Git** y completa:
+Cada equipo tiene ya en su proyecto, entorno **production**, un servicio Compose llamado **`sistema`**, conectado
+a tu repositorio y a la rama de la tabla del apartado 2, leyendo `./deploy/compose.lab.yaml`, con
+**Isolated Deployment** y **despliegue automático** activados. Solo falta configurarlo:
 
-   | Campo | Valor |
-   |---|---|
-   | Repository URL | `https://github.com/ISCOUTB/<tu-repositorio>.git` |
-   | Branch | la de la tabla del apartado 2 (`main` o `master`) |
-   | Compose Path | `./deploy/compose.lab.yaml` |
-
-   Deja *Trigger Type* en `push`. Guarda con **Save**. (Como tu repositorio es público no necesitas llaves SSH.)
-4. Pestaña **Advanced**: activa **Enable Isolated Deployment**. El panel la marca como *Deprecated*, pero
-   **sigue funcionando y es obligatoria aquí**: cada equipo queda en su propia red. Sin ella, tu servicio `api`
-   podría resolverse en el `api` de otro equipo. Si la olvidas, el servidor la activa por ti en menos de
-   5 minutos, pero solo rige desde el siguiente despliegue: hazlo antes del primero.
-5. Pestaña **Environment**: escribe una variable por línea (`POSTGRES_PASSWORD=...`, claves de APIs externas,
+1. En el panel abre tu proyecto → **production** → **sistema**. (Si no lo ves, espera 5 minutos o avisa al docente.)
+2. Pestaña **General → Provider**: comprueba que aparezcan `ISCOUTB`, tu repositorio, tu rama y
+   `./deploy/compose.lab.yaml` como *Compose Path*. Si tu compose está en otra ruta, cámbiala y **Save**.
+3. Pestaña **Environment**: escribe una variable por línea (`POSTGRES_PASSWORD=...`, claves de APIs externas,
    etc.) y guarda. Dokploy genera `deploy/.env` en el servidor al desplegar. Esta pantalla más la referencia
    `${VARIABLE}` de tu compose demuestran la **protección de secretos**. Usa valores largos y aleatorios;
    evita `$` y comillas en las contraseñas.
-6. Pestaña **Domains → Add Domain**, una vez por cada pieza pública:
+4. Pestaña **Domains → Add Domain**, una vez por cada pieza pública:
 
    | Campo | Frontend | API |
    |---|---|---|
@@ -152,40 +144,31 @@ Haz *commit* y *push* de `deploy/compose.lab.yaml` y de los Dockerfile a la rama
    Si no tienes frontend, publica la API directamente en `/`. Con FastAPI bajo `/api` y Strip Path arranca
    uvicorn con `--root-path /api` para que `/api/docs` funcione. Separar por ruta (`/api`) o por nombre
    (`api-<slug>`) son decisiones válidas: justifícala en un ADR (CORS, cookies, versionado).
-7. Pulsa **Deploy** (pestaña **General**). Sigue el avance en la pestaña **Deployments**; la primera compilación tarda varios
+5. Pulsa **Deploy** (pestaña **General**). Sigue el avance en **Deployments**; la primera compilación tarda varios
    minutos. Los cambios de dominio en un Compose se aplican **al volver a desplegar**.
 
-### 3.6 Despliegue automático en cada *push* (opcional)
+> **Ojo con el despliegue automático:** desde ahora cada *push* a tu rama dispara un despliegue. Mientras tu
+> repositorio no tenga `deploy/compose.lab.yaml`, ese despliegue **falla en segundos**: es normal y no daña nada.
+> Cuando lo tenga, cada *push* reconstruye tu sistema. Si prefieres controlar cuándo se despliega, apaga
+> **Autodeploy** en **General**. Recuerda que solo hay 2 compilaciones simultáneas para todos los equipos.
+>
+> **Si tu servicio no existe** (o lo borraste por error), créalo: proyecto → **production** →
+> **Create Service → Compose**; nombre `sistema`; *Provider* **GitHub** (o **Git** con
+> `https://github.com/ISCOUTB/<repositorio>.git`), rama, *Compose Path* `./deploy/compose.lab.yaml`; y activa
+> **Enable Isolated Deployment** en **Advanced** (aparece como *Deprecated*, pero es obligatoria).
 
-1. En el servicio, pestaña **General**, activa **Autodeploy**.
-2. En la pestaña **Deployments** copia la **Webhook URL**.
-3. En tu repositorio de GitHub: *Settings → Webhooks → Add webhook*. *Payload URL*: la URL copiada;
-   *Content type*: `application/json`; evento: **Just the push event**. (Necesitas permiso de administrador
-   sobre el repositorio; si no lo tienes, pídelo al docente o usa el botón **Deploy**.)
+### 3.6 Desplegar solo lo que pasó el CI (opcional)
 
-Solo se despliegan los *push* a la rama configurada. Si quieres desplegar **solo si pasó el CI**, deja
-*Autodeploy* apagado y llama a la *Webhook URL* como último paso de tu workflow de GitHub Actions
-(guárdala como *secret* del repositorio, nunca en el código).
+Con el despliegue automático, todo *push* a la rama del servicio se publica. Para que **solo se publique lo que ya
+pasó tus pruebas**, separa las ramas:
 
-## 4. Operar y comprobar tu sistema
+1. Crea una rama de publicación (por ejemplo `produccion`) en tu repositorio y protégela en GitHub
+   (*Settings → Branches*): que solo reciba *pull requests* con el CI en verde.
+2. En el panel, servicio **sistema → General → Provider**, cambia **Branch** a `produccion` y guarda.
+3. Trabaja en `main`/`master` como siempre; cuando el CI pase, fusiona a `produccion`: ese *merge* es el que despliega.
 
-Comprueba igual que el revisor, **desde fuera de la universidad** (por ejemplo, desde tu casa o con los datos
-del celular):
-
-```bash
-URL=https://<slug>.iscoutb.dev
-curl -sS -o /dev/null -w 'http=%{http_code} tiempo=%{time_total}s\n' "$URL"
-curl -sS -o /dev/null -w 'health=%{http_code}\n' "$URL/api/health"
-```
-
-- **Logs:** pestaña **Logs** del servicio, por contenedor.
-- **Métricas de contenedor:** pestaña **Monitoring** (CPU, memoria, red). Tu **métrica ligada al escenario**
-  la expones tú en la API (p. ej. `/api/metrics`, con `prometheus-fastapi-instrumentator` en FastAPI).
-- **Reversión:** `git revert` del *commit* problemático y *push*; el servidor vuelve a desplegar el estado
-  anterior. Documenta el procedimiento y el tiempo medido en tu ADR.
-- **Entorno `development`:** crea ahí tus pruebas con dominios como `dev-<slug>.iscoutb.dev`.
-- **Cola de compilación:** solo hay **2 compilaciones en paralelo** para todos los equipos. En las horas
-  previas a un cierre habrá cola: despliega con tiempo, no el domingo a las 11 p. m.
+Así, además, tienes un historial claro de **qué versión está publicada** y **cómo volver atrás** (revertir el
+*merge*), lo que sirve como evidencia de tu procedimiento de reversión.
 
 ### Bases de datos
 
@@ -205,7 +188,7 @@ curl -sS -o /dev/null -w 'health=%{http_code}\n' "$URL/api/health"
 
 | Quiero… | Cómo |
 |---|---|
-| Publicar un cambio | *push* a la rama y **Deploy** (o automático con el webhook del apartado 3.6) |
+| Publicar un cambio | *push* a la rama (se despliega solo) o **Deploy** |
 | Cambiar una variable | pestaña **Environment** → guardar → **Deploy** (las variables se leen al desplegar) |
 | Ver por qué falló | **Deployments** → el último despliegue → registro completo |
 | Ver qué hace mi sistema | **Logs** (por contenedor) y **Monitoring** |
