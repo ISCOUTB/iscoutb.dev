@@ -1,0 +1,136 @@
+# CapstoneHUB (github.com/ISCOUTB/CapstoneHUB) adaptado al servidor del laboratorio.
+#
+# Se construye directamente desde el repositorio (contexto git), sin modificarlo. Diferencias con el
+# compose.yml del repositorio, que está pensado para desarrollo:
+#   - sin "ports:" ni "container_name": el tráfico público entra por Traefik (ver dominios en Dokploy);
+#   - sin bind mounts: volúmenes con nombre (${DB_DATA_LOCATION} del original no existe aquí);
+#   - límites de CPU y memoria en cada servicio;
+#   - backend: el Dockerfile del repositorio no compila desde un clon limpio (falta "prisma generate"),
+#     por eso se define aquí en línea con ese único paso añadido;
+#   - MinIO: quay.io/minio/minio ya no se puede descargar (401) y el proyecto upstream está archivado;
+#     se usa una compilación fija de la comunidad (Coolify) en la red interna, sin puertos ni consola,
+#     y el bucket se crea al arrancar (así no hace falta el contenedor minio-init).
+# Variables (Dokploy → Environment): DB_*, S3_*, AUTH_SECRET, INITIAL_ADMIN_*, CAPSTONE_REF.
+
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    command: ["postgres", "-c", "shared_buffers=48MB", "-c", "effective_cache_size=128MB",
+              "-c", "work_mem=4MB", "-c", "maintenance_work_mem=32MB", "-c", "max_connections=40"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 192M
+
+  storage:
+    image: ghcr.io/coollabsio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    entrypoint: ["sh", "-c"]
+    # En MinIO un directorio de primer nivel en /data es un bucket.
+    command: ["mkdir -p /data/$${S3_BUCKET} && exec minio server /data"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET:-capstonehub}
+    volumes:
+      - storagedata:/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 192M
+
+  backend:
+    build:
+      context: https://github.com/ISCOUTB/CapstoneHUB.git#${CAPSTONE_REF:-main}:hub-backend
+      # Igual que hub-backend/Dockerfile, más "prisma generate" antes de compilar: el cliente de Prisma se
+      # genera en src/generated/prisma (ignorado por git) y sin ese paso "nest build" falla con 87 errores
+      # de TypeScript desde un clon limpio.
+      dockerfile_inline: |
+        FROM node:26-slim
+        RUN apt-get update -y \
+            && apt-get install -y --no-install-recommends openssl \
+            && rm -rf /var/lib/apt/lists/*
+        WORKDIR /usr/src/app
+        COPY ./package.json ./package-lock.json ./
+        RUN npm ci --ignore-scripts --no-audit --no-fund
+        COPY . .
+        RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npx prisma generate \
+            && npm run build
+        EXPOSE 3001
+        CMD ["sh", "-c", "npm run db:deploy && node dist/src/main"]
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      NODE_OPTIONS: --max-old-space-size=384
+      DATABASE_URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      AUTH_SECRET: ${AUTH_SECRET}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      INITIAL_ADMIN_NAME: ${INITIAL_ADMIN_NAME:-Administrador}
+      MAX_FILE_SIZE_BYTES: "10485760"
+      S3_ENDPOINT: http://storage:9000
+      S3_BUCKET: ${S3_BUCKET:-capstonehub}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+    expose:
+      - "3001"
+    depends_on:
+      db:
+        condition: service_healthy
+      storage:
+        condition: service_started
+    # GET / es público y responde OK; el arranque incluye "prisma migrate deploy".
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
+
+  frontend:
+    build:
+      context: https://github.com/ISCOUTB/CapstoneHUB.git#${CAPSTONE_REF:-main}:hub-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:3001
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+volumes:
+  pgdata:
+  storagedata:

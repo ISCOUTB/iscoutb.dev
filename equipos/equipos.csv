@@ -1,0 +1,24 @@
+slug,equipo,repo,rama,existe,dockerfile,compose,integrantes
+audioshare,AudioShare,AS_202620_AudioShare,master,si,.devcontainer/Dockerfile;Dockerfile,docker-compose.yml,4
+clubsutb,Clubs UTB,AS_202620_Clubs_UTB,master,si,backend/Dockerfile,no,4
+dinamikutb,DinamikUTB,AS_202620_DinamikUTB,master,si,no,no,4
+drift,Drift,AS_202620_Drift,master,si,no,no,4
+elmapita,ElMapita,AS_202620_ElMapita,main,si,backend/Dockerfile,no,3
+enagenda,EnAgenda,AS_202620_EnAgenda,master,si,Dockerfile,docker-compose.yml,3
+gimnasioutb,GimnasioUTB,AS_202620_GimnasioUTB,main,si,no,no,3
+inventrack,InvenTrack,AS_202620_InvenTrack,main,si,Dockerfile,no,4
+laplacita,LaPlacita,AS_202620_LaPlacita,master,si,Dockerfile,no,4
+lostvault,LostVault,AS_202620_LostVault,main,si,backend/Dockerfile,docker-compose.yml,4
+mapsutb,mapsutb,AS_202620_mapsutb,master,si,infra/Dockerfile,infra/docker-compose.yml,4
+pideutb,PideUtb,AS_202620_PideUtb,master,si,no,no,3
+campusmarket,CampusMarket,AS_202620_PROYECTO_CAMPUSMARKET,master,si,no,no,3
+recobra,Recobra,AS_202620_Recobra,master,si,Dockerfile,no,4
+routb,ROUTB,AS_202620_ROUTB,master,si,backend/Dockerfile,docker-compose.yml,4
+shareu,ShareU,AS_202620_ShareU,master,si,no,no,4
+calificacion,Calificación automática,AS_202620_Sistema-de-calificacion-automatica,master,si,backend/Dockerfile;frontend/Dockerfile,docker-compose.yml,4
+taia,TAIA,AS_202620_TAIA_-Task-Artificial-Intelligence-Assistant,main,si,backend/Dockerfile,no,4
+tiendautb,Tienda virtual UTB,AS_202620_TIENDA-VIRTUAL-UTB,main,si,backend/Dockerfile;frontend/Dockerfile,compose.yaml,4
+tractar,TRACTAR,AS_202620_TRACTAR,main,si,no,no,4
+uniteam,uniTeam,AS_202620_uniTeam,master,si,Dockerfile;web/Dockerfile,compose.yaml,4
+xald,XALD,AS_202620_XALD,master,si,backend/Dockerfile,no,4
+verifacts,Verifacts,AS_202620_Verifacts,master,si,Dockerfile,no,3

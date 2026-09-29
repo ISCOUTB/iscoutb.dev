@@ -1,0 +1,111 @@
+# deploy/compose.lab.yaml — infraestructura como código del sistema en el servidor del laboratorio.
+#
+# Dokploy lo despliega en cada push a la rama principal con:
+#   docker compose -p <app> --env-file deploy/.env -f deploy/compose.lab.yaml up -d --build
+# Las rutas relativas (build.context) se resuelven desde deploy/, por eso se usa "../".
+#
+# Reglas del laboratorio (docs/politicas-uso.md):
+#   - Sin "ports:": Traefik enruta el tráfico público; usa "expose".
+#   - Sin bind mounts, docker.sock ni privileged: solo volúmenes con nombre.
+#   - Sin container_name ni redes externas (Isolated Deployment crea la red del equipo).
+#   - Límites en cada servicio: el total del equipo no pasa de 512 MB.
+#   - Secretos en Dokploy → Environment. Aquí solo se referencian con ${VARIABLE}.
+
+services:
+  api:
+    build:
+      context: ../backend          # carpeta con el Dockerfile de la API
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      LOG_FORMAT: json
+      # Otras variables de la API: agrégalas en Dokploy y referéncialas aquí.
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 192M
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Parámetros de memoria acordes al límite de 160 MB.
+    command: ["postgres", "-c", "shared_buffers=32MB", "-c", "effective_cache_size=96MB",
+              "-c", "work_mem=2MB", "-c", "maintenance_work_mem=16MB", "-c", "max_connections=30"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 160M
+
+  # Frontend web (opcional). Las apps móviles Flutter NO se despliegan aquí.
+  # web:
+  #   build:
+  #     context: ../frontend
+  #   restart: unless-stopped
+  #   expose:
+  #     - "80"                     # nginx; con Next.js standalone usa "3000"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: 64M            # nginx estático; Next.js SSR necesita ~160M
+
+  # Broker de mensajes (semana 12). Elige UNO. Kafka no está permitido en el laboratorio.
+  # broker:
+  #   image: rabbitmq:4-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+  #   volumes:
+  #     - rabbitmq:/var/lib/rabbitmq
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.50"
+  #         memory: 160M
+  #
+  # broker:                        # alternativa ligera: NATS con JetStream (~20 MB)
+  #   image: nats:2-alpine
+  #   restart: unless-stopped
+  #   command: ["-js", "-sd", "/data", "-m", "8222"]
+  #   volumes:
+  #     - nats:/data
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "0.25"
+  #         memory: 64M
+
+volumes:
+  pgdata:
+  # rabbitmq:
+  # nats:

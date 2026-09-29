@@ -1,0 +1,6 @@
+.env
+equipos/integrantes.csv
+reportes/
+vendor/
+equipos/credenciales.csv
+__pycache__/
