@@ -29,6 +29,7 @@ Internet ─► Cloudflare DNS (*.iscoutb.dev, DNS only) ─► OCI Security Lis
 | `scripts/10-aprovisionar-equipos.py` | Proyectos, entornos, servicio Compose y cuentas por equipo |
 | `scripts/11-dns-cloudflare.sh` | Registro wildcard `*.iscoutb.dev` en Cloudflare |
 | `scripts/12-desplegar-capstonehub.py` | Despliega CapstoneHUB (app del docente) en su propio proyecto; ver `plataforma/capstonehub/` |
+| `scripts/14-autodeploy.py` | Consulta, activa o desactiva el despliegue automático de los servicios de los equipos |
 | `scripts/13-sincronizar-permisos.py` | Comparte con todo el equipo los servicios de su proyecto (cron) |
 | `scripts/20-auditar-servicios.sh` | docker.sock, bind mounts, privileged, puertos, límites y dominios ajenos (cron) |
 | `scripts/21-estado-capacidad.sh` | Consumo por equipo y disco |

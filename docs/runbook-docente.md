@@ -15,6 +15,49 @@
 Perímetro: el Security List de OCI solo abre 22, 80 y 443. Los puertos que publica Docker saltan
 el `INPUT` de iptables, así que **no abras otros puertos en OCI**: es la única barrera.
 
+## Estado actual y pendientes (29-sep-2026)
+
+**Listo:** servidor, Docker, Dokploy v0.30.8, certificado wildcard, panel en `https://panel.iscoutb.dev`, GitHub App,
+23 proyectos, **86 cuentas de estudiantes** y el servicio Compose `sistema` de **cada uno de los 23 equipos**
+(origen GitHub, aislamiento y despliegue automático activados). Manual para estudiantes publicado en el
+repositorio `ISCOUTB/iscoutb.dev`.
+
+**Pendiente antes de abrir la plataforma a los estudiantes** (en este orden):
+
+1. **Restringir la GitHub App a los repositorios `AS_202620_*`.** Hoy ve **toda la organización** (240 repositorios): como el
+   proveedor está compartido, un estudiante podría elegir en *Create Service* cualquier repositorio de `ISCOUTB`,
+   incluidos los privados de otros cursos, y desplegarlo. En GitHub: *Settings → Applications → Installed GitHub Apps →
+   `Dokploy-…` → Configure → Repository access → Only select repositories*. Después verifica desde el servidor que la lista
+   bajó a ~24 (`gitProvider.getAll` y `github.getGithubRepositories`; el resultado debe contener solo `AS_202620_*`).
+   Los repositorios nuevos del curso hay que agregarlos a mano en esa misma pantalla.
+2. **Entregar las credenciales.** No hay servidor de correo: reparte a cada estudiante su fila de
+   `equipos/credenciales.csv` (usuario = correo institucional; contraseña inicial) en persona o por el aula, nunca por
+   un canal público. Pídeles que la cambien en *Settings → Profile* en su primer ingreso; Dokploy no lo exige.
+   Mientras no la cambien, esa contraseña sigue en tu archivo: **borra o guarda cifrado** `credenciales.csv`
+   cuando todos hayan entrado.
+3. **Revisar la cuenta de un miembro que no está en `equipos/integrantes.csv`** (sin permisos ni proyectos, creada el 28-sep a las
+   19:06 hora Bogotá; no salió del aprovisionamiento; la reporta `13-sincronizar-permisos.py`). Si no es de una persona de confianza, elimínala en *Settings → Users*.
+   Mientras exista, ese script seguirá avisando.
+4. **Prueba de punta a punta con un equipo** siguiendo el README como lo haría un estudiante, para confirmar cómo
+   se ve cada pantalla (los nombres de pestañas y campos se tomaron del código de v0.30.8, no de pantalla).
+5. Opcional: respaldo de Dokploy en Object Storage de Oracle (ver *Copias de seguridad*).
+
+**Qué esperar con el despliegue automático activado.** Cada *push* de un equipo a su rama dispara un despliegue.
+Mientras el repositorio no tenga `deploy/compose.lab.yaml`, falla en segundos (inofensivo, pero ocupa un turno de las
+2 compilaciones simultáneas). Cuando lo tenga, cada *push* reconstruye el sistema, y con 23 equipos la cola crece en
+fechas de entrega. Si la cola se satura:
+
+```bash
+./scripts/14-autodeploy.py                 # cuántos servicios tienen Autodeploy
+./scripts/14-autodeploy.py --desactivar    # manual para todos: despliegan con el botón Deploy
+./scripts/14-autodeploy.py --activar       # de vuelta a automático
+./scripts/14-autodeploy.py --desactivar --equipo routb --equipo drift   # solo algunos
+```
+
+Para limpiar la cola atascada: *Settings → Server →* limpiar la cola de despliegues, o `settings.cleanAllDeploymentQueue`.
+Tras crear equipos o servicios nuevos, `./scripts/13-sincronizar-permisos.py` (también por cron cada 5 min) mantiene
+al día los permisos y fuerza *Isolated Deployment*.
+
 ## Puesta en marcha (orden)
 
 | Paso | Comando o acción | Estado al 29-sep-2026 |
@@ -26,12 +69,12 @@ el `INPUT` de iptables, así que **no abras otros puertos en OCI**: es la única
 | 5 | `./scripts/11-dns-cloudflare.sh` (wildcard `*.iscoutb.dev`) | hecho |
 | 6 | `sudo ./scripts/03-certificado-wildcard.sh` | hecho (vence 27-dic-2026, renovación automática) |
 | 7 | Settings → Profile → API/CLI → Generate (**sin límite de peticiones**, sin vencimiento); pegar en `.env` como `DOKPLOY_API_KEY` | hecho |
-| 8 | GitHub App (más abajo) | hecho; **pendiente restringirla a los repositorios `AS_202620_*`** (hoy ve toda la organización) |
+| 8 | GitHub App (más abajo) | hecho; **pendiente restringirla a `AS_202620_*`** (ver *Estado actual y pendientes*) |
 | 9 | `./scripts/04-configurar-dokploy.py --email-acme <correo>` | hecho (falta compartir GitHub tras el paso 8) |
 | 10 | `sudo ./scripts/05-post-instalacion.sh` (cierra el 3000, instala el cron) | hecho |
 | 11 | Correos de Moodle en `equipos/integrantes.csv` | hecho |
 | 12 | `./scripts/10-aprovisionar-equipos.py --cuentas --compose` (proyectos, cuentas y servicio `sistema` por equipo) | hecho (86 cuentas, 23 proyectos, 23 servicios) |
-| 13 | Entregar a cada estudiante su fila de `equipos/credenciales.csv` (privado, sin servidor de correo) | pendiente |
+| 13 | Entregar a cada estudiante su fila de `equipos/credenciales.csv` (privado, sin servidor de correo) | **pendiente** (después del paso 8) |
 
 Tras el paso 10 el panel **solo** es accesible en https://panel.iscoutb.dev.
 
@@ -55,6 +98,8 @@ las mediciones de los escenarios dejarían de reflejar el servidor.
 (recrea Traefik y lo reconecta a las redes de los equipos) y revoca el anterior en Cloudflare.
 
 ### GitHub App en la organización ISCOUTB
+
+> Instalada el 28-sep-2026. **Ajuste pendiente:** en el paso 2, dejar *Only select repositories* con los `AS_202620_*` (quedó con acceso a toda la organización).
 
 1. Dokploy → *Settings → Git → GitHub → Create GitHub App*. Marca **Organization** y escribe `ISCOUTB`.
 2. GitHub crea la app y pide instalarla: elige **Only select repositories** y marca los
