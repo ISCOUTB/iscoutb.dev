@@ -128,8 +128,11 @@ Haz *commit* y *push* de `deploy/compose.lab.yaml` y de los Dockerfile a la rama
    | Branch | la de la tabla del apartado 2 (`main` o `master`) |
    | Compose Path | `./deploy/compose.lab.yaml` |
 
-   Guarda con **Save**. (Como tu repositorio es público no necesitas llaves SSH.)
-4. Pestaña **Advanced**: activa **Isolated Deployment**. Cada equipo queda en su propia red y no ve a los demás.
+   Deja *Trigger Type* en `push`. Guarda con **Save**. (Como tu repositorio es público no necesitas llaves SSH.)
+4. Pestaña **Advanced**: activa **Enable Isolated Deployment**. El panel la marca como *Deprecated*, pero
+   **sigue funcionando y es obligatoria aquí**: cada equipo queda en su propia red. Sin ella, tu servicio `api`
+   podría resolverse en el `api` de otro equipo. Si la olvidas, el servidor la activa por ti en menos de
+   5 minutos, pero solo rige desde el siguiente despliegue: hazlo antes del primero.
 5. Pestaña **Environment**: escribe una variable por línea (`POSTGRES_PASSWORD=...`, claves de APIs externas,
    etc.) y guarda. Dokploy genera `deploy/.env` en el servidor al desplegar. Esta pantalla más la referencia
    `${VARIABLE}` de tu compose demuestran la **protección de secretos**. Usa valores largos y aleatorios;
@@ -144,12 +147,12 @@ Haz *commit* y *push* de `deploy/compose.lab.yaml` y de los Dockerfile a la rama
    | Strip Path | no | sí, si tu API no incluye `/api` en sus rutas |
    | Container Port | 80 (nginx) o 3000 (Next.js) | el de tu API (8000, 3001…) |
    | HTTPS | activado | activado |
-   | Certificate | **Let's Encrypt** | **Let's Encrypt** |
+   | Certificate Provider | **Let's Encrypt** | **Let's Encrypt** |
 
    Si no tienes frontend, publica la API directamente en `/`. Con FastAPI bajo `/api` y Strip Path arranca
    uvicorn con `--root-path /api` para que `/api/docs` funcione. Separar por ruta (`/api`) o por nombre
    (`api-<slug>`) son decisiones válidas: justifícala en un ADR (CORS, cookies, versionado).
-7. Pulsa **Deploy**. Sigue el avance en la pestaña **Deployments**; la primera compilación tarda varios
+7. Pulsa **Deploy** (pestaña **General**). Sigue el avance en la pestaña **Deployments**; la primera compilación tarda varios
    minutos. Los cambios de dominio en un Compose se aplican **al volver a desplegar**.
 
 ### 3.6 Despliegue automático en cada *push* (opcional)
@@ -184,6 +187,33 @@ curl -sS -o /dev/null -w 'health=%{http_code}\n' "$URL/api/health"
 - **Cola de compilación:** solo hay **2 compilaciones en paralelo** para todos los equipos. En las horas
   previas a un cierre habrá cola: despliega con tiempo, no el domingo a las 11 p. m.
 
+### Bases de datos
+
+- La base de datos es **un servicio más de tu compose** (`db`), con un volumen con nombre y **sin** `ports:`. No se
+  puede entrar a ella desde Internet, y en el panel no tienes terminal del servidor: tu API se conecta usando el
+  nombre del servicio como host (`db`, puerto 5432 o 3306).
+- Las migraciones se ejecutan **al arrancar tu API** (Prisma `migrate deploy`, Alembic `upgrade head`, Flyway…),
+  no a mano. Así un despliegue limpio siempre deja la base lista.
+- Para revisar datos, ejecuta el mismo compose en tu computador (`docker compose exec db psql ...`) o expón
+  consultas de solo lectura en tu API.
+- **No hay copia de seguridad garantizada** de tus volúmenes: versiona un *script de siembra* (*seed*) para
+  recrear los datos de la demostración.
+- Usa `postgres:15-alpine` o `16-alpine` y `mysql:8.4`, con los parámetros de memoria de las plantillas.
+  Servicios externos (Supabase, Firebase) también funcionan: el servidor tiene salida a Internet.
+
+### Tareas frecuentes
+
+| Quiero… | Cómo |
+|---|---|
+| Publicar un cambio | *push* a la rama y **Deploy** (o automático con el webhook del apartado 3.6) |
+| Cambiar una variable | pestaña **Environment** → guardar → **Deploy** (las variables se leen al desplegar) |
+| Ver por qué falló | **Deployments** → el último despliegue → registro completo |
+| Ver qué hace mi sistema | **Logs** (por contenedor) y **Monitoring** |
+| Reconstruir sin cambios de código | **Rebuild** |
+| Volver a una versión anterior | `git revert` + *push*, y **Deploy** |
+| Agregar un segundo dominio | **Domains → Add Domain** con `<algo>-<slug>.iscoutb.dev` y volver a desplegar |
+| Probar algo sin tocar producción | crea el servicio en el entorno **development** con `dev-<slug>.iscoutb.dev` |
+
 ## 5. Evidencia para tus entregas
 
 | Lo que piden las fichas | Dónde lo tienes |
@@ -201,6 +231,16 @@ curl -sS -o /dev/null -w 'health=%{http_code}\n' "$URL/api/health"
 equipo usa como máximo 0,5 CPU por contenedor y 512 MB. Estima con la lista de precios pública de Oracle
 Cloud (por OCPU-hora, por GB de RAM-hora y por GB de disco al mes) y declara tus supuestos: fracción
 asignada a tu equipo, horas al mes y en qué punto dejarías de caber en la capa gratuita.
+
+### Lista de comprobación antes de entregar
+
+- [ ] `deploy/compose.lab.yaml` y los Dockerfile están en la **rama que se califica** y funcionan con `docker compose up --build` en limpio.
+- [ ] `https://<slug>.iscoutb.dev` abre **desde fuera de la universidad** y con candado válido.
+- [ ] `GET /health` responde `200` y falla (no `200`) si la base de datos no está disponible.
+- [ ] No hay contraseñas, claves ni tokens en el repositorio ni en su historial (`git log -S` y `git grep`).
+- [ ] Los logs salen en JSON y tu métrica es consultable por URL.
+- [ ] La última compilación terminó en **Done** y no depende de un archivo que solo existe en tu computador.
+- [ ] Desplegaste con al menos 24 horas de margen antes del cierre.
 
 ## 6. Errores frecuentes
 

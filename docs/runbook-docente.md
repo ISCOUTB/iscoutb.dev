@@ -6,11 +6,11 @@
 |---|---|---|
 | VM | OCI `VM.Standard.E5.Flex` Phoenix, 2 vCPU, 12 GB + 4 GB swap, 45 GB | Ubuntu 26.04 |
 | Docker | 29.8.1, retenido con `apt-mark hold` | Swarm de un nodo, logs rotados (10 MB × 3) |
-| Dokploy | servicio Swarm `dokploy`, imagen `dokploy/dokploy:v0.30.7` | datos en el volumen `dokploy` y en `/etc/dokploy` |
+| Dokploy | servicio Swarm `dokploy`, imagen `dokploy/dokploy:v0.30.8` | datos en el volumen `dokploy` y en `/etc/dokploy` |
 | BD de Dokploy | servicio `dokploy-postgres` (postgres:16) | contraseña en el secreto Docker `dokploy_postgres_password` |
 | Proxy | contenedor `dokploy-traefik` (traefik v3.6.25) | wildcard `*.iscoutb.dev` por DNS-01; `acme.json` en `/etc/dokploy/traefik/dynamic/` |
 | DNS | Cloudflare, zona `iscoutb.dev` | un solo registro `*.iscoutb.dev` A hacia la IP pública de la VM, *DNS only* |
-| Cron | `/etc/cron.d/dokploy-plataforma` | permisos cada 5 min; auditoría (contenedores y dominios) los lunes 07:00 |
+| Cron | `/etc/cron.d/dokploy-plataforma` | cada 5 min: permisos del equipo y **Isolated Deployment forzado** en sus servicios Compose; auditoría (contenedores y dominios) los lunes 07:00 |
 
 Perímetro: el Security List de OCI solo abre 22, 80 y 443. Los puertos que publica Docker saltan
 el `INPUT` de iptables, así que **no abras otros puertos en OCI**: es la única barrera.
@@ -131,9 +131,33 @@ Umbrales: disco > 75 %, o RAM disponible < 1,5 GB sostenida (`free -h`), o swap 
 ## Actualizaciones
 
 - Ubuntu: `unattended-upgrades` aplica parches de seguridad. Docker está retenido a propósito.
-- **Dokploy solo entre semestres:** backup manual, luego
-  `sudo docker service update --image dokploy/dokploy:<version> dokploy`, y actualiza
-  `DOKPLOY_VERSION` en `.env`. No uses el botón *Update* del panel durante el semestre.
+- **Dokploy:** no uses el botón *Update* del panel; actualiza a una versión concreta y solo después de leer qué cambia.
+  Los parches sin migraciones ni cambios de API (revisa `https://github.com/Dokploy/dokploy/compare/<actual>...<nueva>`:
+  carpeta `drizzle`, routers, `traefik`) se pueden aplicar durante el semestre, **fuera de horas de entrega**.
+  Los cambios de versión menor (0.31, 0.32…) esperan a entre semestres, con prueba previa.
+
+  ```bash
+  # 1. Copia de seguridad (BD de Dokploy + /etc/dokploy con la configuración y los certificados)
+  D=~/backups/dokploy-antes-<nueva>-$(date +%Y%m%d-%H%M); mkdir -p $D && chmod 700 ~/backups $D
+  sudo docker exec $(sudo docker ps -qf name=dokploy-postgres) pg_dump -U dokploy dokploy | gzip > $D/dokploy-bd.sql.gz
+  sudo tar czf $D/etc-dokploy.tgz -C / etc/dokploy && sudo chown $USER: $D/* && chmod 600 $D/*
+  sudo docker service inspect dokploy --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' > $D/imagen-anterior.txt
+
+  # 2. Descargar antes (el corte dura segundos) y actualizar
+  sudo docker pull dokploy/dokploy:<nueva>
+  sudo docker service update --image dokploy/dokploy:<nueva> dokploy
+
+  # 3. Verificar: versión, panel, permisos de un estudiante, auditoría
+  python3 -c "import sys; sys.path.insert(0,'scripts'); from dokploy import Dokploy; print(Dokploy().get('settings.getDokployVersion'))"
+  curl -sI https://panel.iscoutb.dev | head -1
+  ./scripts/13-sincronizar-permisos.py && sudo ./scripts/20-auditar-servicios.sh
+  ```
+
+  Después actualiza `DOKPLOY_VERSION` en `.env` y `.env.example`.
+- **Volver atrás:** `sudo docker service update --rollback dokploy` restaura la imagen anterior. Si la nueva versión
+  aplicó migraciones, restaura además la base: `zcat dokploy-bd.sql.gz | sudo docker exec -i <dokploy-postgres> psql -U dokploy dokploy`
+  con el servicio `dokploy` detenido (`docker service scale dokploy=0`).
+- **Historial:** 2026-09-29 v0.30.7 → v0.30.8 (parche de un widget de chat; sin migraciones, API ni Traefik). Sin incidencias.
 
 ## Cierre del semestre (después del 30-nov-2026)
 

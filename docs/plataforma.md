@@ -9,7 +9,7 @@ alternativa sin tarjeta que el curso promete en el taller de despliegue.
 ```
 Internet ─► Cloudflare DNS (*.iscoutb.dev, DNS only) ─► OCI Security List (22, 80, 443) ─► VM Ubuntu 26.04 · Docker 29 · Swarm 1 nodo
              ├─ Traefik v3.6 + certificado wildcard *.iscoutb.dev (Let's Encrypt, DNS-01 Cloudflare)
-             │    ├─ panel.iscoutb.dev                → Dokploy v0.30.7
+             │    ├─ panel.iscoutb.dev                → Dokploy v0.30.8
              │    └─ <equipo>.iscoutb.dev, <x>-<equipo> → sistema del equipo (/ web, /api API)
              └─ un proyecto por equipo → Compose desde deploy/compose.lab.yaml del repositorio
                 (red aislada, límites de CPU/RAM, autodeploy por GitHub App)

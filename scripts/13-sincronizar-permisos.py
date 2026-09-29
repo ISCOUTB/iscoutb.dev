@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""Da a cada estudiante acceso a TODO el proyecto de su equipo (entornos y servicios).
+"""Mantiene al día los proyectos de los equipos. Idempotente; solo llama a la API cuando algo cambió.
 
-En Dokploy un servicio nuevo solo queda visible para quien lo creó; este script lo comparte con
-el resto del equipo. Es idempotente y solo llama a la API cuando algo cambió. Pensado para cron:
+1. Da a cada estudiante acceso a TODO el proyecto de su equipo (entornos y servicios): en Dokploy un
+   servicio nuevo solo queda visible para quien lo creó.
+2. Activa "Isolated Deployment" en todo servicio Compose de un equipo. Sin él, los servicios con dominio
+   comparten la red dokploy-network y un servicio "api" de un equipo puede resolverse en el "api" de otro.
+   Los estudiantes crean el servicio a mano y pueden olvidarlo; el cambio rige desde el siguiente despliegue.
+
+Pensado para cron:
     */5 * * * * /home/ubuntu/dokploy-platform/scripts/13-sincronizar-permisos.py --silencioso
 """
 import argparse
@@ -43,8 +48,21 @@ def sincronizar(api, silencioso=False):
         cambios += 1
         if not silencioso:
             print(f"{slug:<14} {correo}: {len(entornos)} entornos, {len(servicios)} servicios")
-    if not silencioso or cambios:
-        print(f"Permisos actualizados: {cambios}")
+    aislados = forzar_aislamiento(api, {e["slug"] for e in leer_csv("equipos.csv")}, proyectos, silencioso)
+    if not silencioso or cambios or aislados:
+        print(f"Permisos actualizados: {cambios} · servicios Compose aislados ahora: {aislados}")
+
+
+def forzar_aislamiento(api, slugs, proyectos, silencioso):
+    activados = 0
+    for slug in sorted(slugs & set(proyectos)):
+        for env in api.get("project.one", projectId=proyectos[slug]).get("environments", []):
+            for c in env.get("compose", []) or []:
+                if not api.get("compose.one", composeId=c["composeId"]).get("isolatedDeployment"):
+                    api.post("compose.update", {"composeId": c["composeId"], "isolatedDeployment": True})
+                    activados += 1
+                    print(f"{slug:<14} {c['name']}: Isolated Deployment activado (rige desde el próximo despliegue)")
+    return activados
 
 
 def main():
