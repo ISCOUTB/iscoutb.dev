@@ -6,7 +6,11 @@
 
 Los secretos se generan una sola vez y viven únicamente en Dokploy (Environment del servicio): al volver a
 ejecutar se conservan. Las credenciales externas (R2, Google, correo) quedan con un valor de relleno hasta que
-se editen en Dokploy → sapsai → Environment. El compose es plataforma/sapsai/compose.yaml.
+se editen en Dokploy → sapsai → Environment.
+
+El origen es el propio repositorio (rama main, archivo docker-compose.dokploy.yml) por SSH con la llave "sapsai-deploy"
+de Dokploy (deploy key con escritura en VerbaNexAI/sapsai) y autodeploy activado: Dokploy redespliega cuando GitHub
+llama al webhook del servicio (Dokploy → sapsai → Deployments → Webhook URL), que se registra a mano en el repositorio.
 """
 import argparse
 import os
@@ -16,11 +20,14 @@ import subprocess
 import sys
 import time
 
-from dokploy import RAIZ, Dokploy, ErrorApi, cargar_env
+from dokploy import Dokploy, ErrorApi, cargar_env
 
 PROYECTO = "sapsai"
 SERVICIO = "sapsai"
-RUTA_COMPOSE = os.path.join(RAIZ, "plataforma", "sapsai", "compose.yaml")
+URL_GIT = "git@github.com:VerbaNexAI/sapsai.git"
+RAMA = "main"
+RUTA_COMPOSE = "./docker-compose.dokploy.yml"
+LLAVE_SSH = "sapsai-deploy"
 # (subdominio, servicio del compose, puerto del contenedor)
 DOMINIOS = [("sapsai", "frontend", 80)]
 PENDIENTE = "pendiente"
@@ -42,7 +49,6 @@ def main():
 
     dominio = cargar_env().get("DOMINIO", "iscoutb.dev")
     api = Dokploy()
-    plantilla = open(RUTA_COMPOSE).read()
 
     proyectos = {p["name"]: p["projectId"] for p in api.get("project.all")}
     if PROYECTO in proyectos:
@@ -58,17 +64,21 @@ def main():
         compose_id = existente["composeId"]
     else:
         nuevo = api.post("compose.create", {"name": SERVICIO, "environmentId": entorno["environmentId"], "composeType": "docker-compose",
-                                            "appName": SERVICIO, "sourceType": "raw", "composeFile": plantilla,
+                                            "appName": SERVICIO, "sourceType": "raw", "composeFile": "services: {}",
                                             "description": "Frontend + backend Bun/Prisma + clasificador TensorFlow + PostgreSQL"})
         compose_id = nuevo["composeId"]
         print(f"servicio Compose creado ({nuevo['appName']})")
-    api.post("compose.update", {"composeId": compose_id, "sourceType": "raw", "composeFile": plantilla,
-                                "isolatedDeployment": True, "autoDeploy": False})
+    llave = next((k["sshKeyId"] for k in api.get("sshKey.all") if k["name"] == LLAVE_SSH), None)
+    if not llave:
+        sys.exit(f"Falta la llave SSH '{LLAVE_SSH}' en Dokploy (Settings → SSH Keys) con acceso al repositorio.")
+    api.post("compose.update", {"composeId": compose_id, "sourceType": "git", "customGitUrl": URL_GIT, "customGitBranch": RAMA,
+                                "customGitSSHKeyId": llave, "composePath": RUTA_COMPOSE, "enableSubmodules": False,
+                                "watchPaths": [], "isolatedDeployment": True, "autoDeploy": True})
     compose = api.get("compose.one", composeId=compose_id)
 
     env = leer_env(compose.get("env"))
     por_defecto = {
-        "DOMINIO": dominio, "SAPSAI_REF": "main",
+        "DOMINIO": dominio,
         "DB_USERNAME": "leafuser", "DB_PASSWORD": alfanum(28), "DB_NAME": "leafapp",
         "JWT_ACCESS_SECRET": secrets.token_hex(32), "JWT_REFRESH_SECRET": secrets.token_hex(32), "SESSION_SECRET": secrets.token_hex(32),
         "DEFAULT_EMAIL": f"admin@{dominio}", "DEFAULT_USERNAME": "admin", "DEFAULT_PASSWORD": alfanum(20),
@@ -97,7 +107,7 @@ def main():
         return
 
     previos = {d["deploymentId"] for d in api.get("compose.one", composeId=compose_id).get("deployments", [])}
-    api.post("compose.deploy", {"composeId": compose_id, "title": "Despliegue de SAPSAI", "description": f"ref {env['SAPSAI_REF']}"})
+    api.post("compose.deploy", {"composeId": compose_id, "title": "Despliegue de SAPSAI", "description": f"rama {RAMA}"})
     print("despliegue encolado; esperando…")
     inicio, ultimo = time.time(), None
     while time.time() - inicio < args.espera_max:
