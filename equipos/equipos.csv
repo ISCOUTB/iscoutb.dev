@@ -22,3 +22,4 @@ tractar,TRACTAR,AS_202620_TRACTAR,main,si,no,no,4
 uniteam,uniTeam,AS_202620_uniTeam,master,si,Dockerfile;web/Dockerfile,compose.yaml,4
 xald,XALD,AS_202620_XALD,master,si,backend/Dockerfile,no,4
 verifacts,Verifacts,AS_202620_Verifacts,master,si,Dockerfile,no,3
+checku,Check_U,check_u,main,no,no,no,1
