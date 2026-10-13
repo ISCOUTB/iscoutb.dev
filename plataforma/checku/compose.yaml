@@ -1,0 +1,117 @@
+# Check_U (github.com/ISCOUTB/check_u) adaptado al servidor del laboratorio.
+#
+# El repositorio no trae Dockerfile ni compose (se ejecuta en Windows con iniciar.ps1), así que cada servicio
+# se construye desde el contexto git con el Dockerfile definido en línea, sin modificar el repositorio:
+#   - panel:    webapp/ Flask (OCR con Tesseract + PDF417 + consulta RUI) con gunicorn, no el servidor de
+#               desarrollo (app.py arranca con debug=True, que expondría la consola de Werkzeug);
+#   - backend:  NestJS (api con prefijo /api);
+#   - frontend: Next.js; NEXT_PUBLIC_API_URL se incorpora al compilar y las page.tsx vacías del repositorio
+#               (hoy preinscripcion/) reciben un componente mínimo para que "next build" compile.
+# Sin "ports:" ni "container_name": el tráfico público entra por Traefik (dominios en Dokploy).
+# Variables (Dokploy → Environment): DOMINIO, CHECKU_REF.
+
+services:
+  panel:
+    build:
+      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}
+      dockerfile_inline: |
+        FROM python:3.12-slim
+        RUN apt-get update -y \
+            && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa poppler-utils libglib2.0-0 \
+            && rm -rf /var/lib/apt/lists/*
+        RUN pip install --no-cache-dir gunicorn pdf2image pytesseract pillow opencv-python-headless numpy flask requests \
+            pymupdf pdfplumber pypdf zxing-cpp rapidfuzz
+        WORKDIR /app
+        COPY modules ./modules
+        COPY webapp ./webapp
+        WORKDIR /app/webapp
+        EXPOSE 5000
+        CMD ["gunicorn", "-w", "1", "--threads", "8", "--timeout", "300", "-b", "0.0.0.0:5000", "app:app"]
+    restart: unless-stopped
+    volumes:
+      - casos:/app/webapp/data
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/').status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 768M
+
+  backend:
+    build:
+      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}:backend
+      dockerfile_inline: |
+        FROM node:24-slim
+        WORKDIR /usr/src/app
+        COPY package.json package-lock.json ./
+        RUN npm ci --no-audit --no-fund
+        COPY . .
+        RUN npm run build && npm prune --omit=dev
+        ENV NODE_ENV=production
+        EXPOSE 3000
+        CMD ["node", "dist/main"]
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      NODE_OPTIONS: --max-old-space-size=192
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  frontend:
+    build:
+      context: https://github.com/ISCOUTB/check_u.git#${CHECKU_REF:-main}:frontend
+      args:
+        NEXT_PUBLIC_API_URL: https://api-checku.${DOMINIO:-iscoutb.dev}/api
+      dockerfile_inline: |
+        FROM node:24-slim
+        WORKDIR /usr/src/app
+        COPY package.json package-lock.json ./
+        RUN npm ci --no-audit --no-fund
+        COPY . .
+        ARG NEXT_PUBLIC_API_URL
+        ENV NEXT_PUBLIC_API_URL=$${NEXT_PUBLIC_API_URL}
+        ENV NEXT_TELEMETRY_DISABLED=1
+        # app/estudiante/preinscripcion/page.tsx está vacío en main y "next build" falla con TS2306:
+        # las páginas vacías reciben un componente mínimo (el repositorio no se modifica).
+        RUN find app -name 'page.tsx' -empty -exec sh -c 'echo "export default function Page() { return null; }" > "$1"' _ {} \;
+        RUN npm run build
+        ENV NODE_ENV=production
+        EXPOSE 3000
+        CMD ["npx", "next", "start", "-p", "3000"]
+    restart: unless-stopped
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 384M
+
+volumes:
+  casos:
