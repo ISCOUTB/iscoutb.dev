@@ -62,9 +62,9 @@ def main():
 
     # 3. Variables: se conservan las existentes; se generan las que falten
     env = leer_env(compose.get("env"))
-    por_defecto = {"DOMINIO": dominio, "ATLAS_REF": "master", "MODEL_PROVIDER": "dmr", "MODEL_BASE_URL": "http://modelo.invalid:11434", "MODEL_NAME": "ai/gemma4:E4B"}
+    por_defecto = {"DOMINIO": dominio, "ATLAS_REF": "master"}
     nuevas = [k for k in por_defecto if k not in env]
-    env = {**por_defecto, **env}
+    env = {k: v for k, v in {**por_defecto, **env}.items() if not k.startswith("MODEL_")}  # el modelo va fijo en el compose (ollama)
     api.post("compose.saveEnvironment", {"composeId": compose_id, "createEnvFile": True, "env": "\n".join(f"{k}={v}" for k, v in env.items())})
     print(f"variables: {len(env)} ({len(nuevas)} generadas ahora; los valores están en Dokploy → atlas → Environment)")
 

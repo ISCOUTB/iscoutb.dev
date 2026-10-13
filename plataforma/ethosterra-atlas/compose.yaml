@@ -7,10 +7,12 @@
 #   - api: FastAPI (puerto 8000) con el repositorio completo en /app (las rutas de apps.atlas son relativas a la raíz);
 #   - ui:  Vite/React compilado y servido con nginx; VITE_API_URL se incorpora al compilar y la URL fija
 #          http://localhost:8000/v2 de DocumentPipelineView se sustituye por la pública.
-# El servidor no tiene un modelo de lenguaje: MODEL_BASE_URL apunta a un servicio compatible con OpenAI/Ollama
-# que se configura en Dokploy → Environment; sin él la API arranca, pero las funciones con LLM fallan.
+#   - ollama: modelo local Gemma 2 2B (gemma2:2b, ~1,6 GB en disco, ~2 GB en RAM mientras está cargado). Al
+#             iniciar descarga el modelo si falta (volumen "modelos", solo la primera vez) y la API lo usa por
+#             la API compatible con OpenAI (http://ollama:11434/v1). Se descarga de la memoria tras 5 min sin uso.
+#             La API no espera a ollama: mientras el modelo se descarga, las funciones con LLM responden error.
 # Sin "ports:" ni "container_name": el tráfico público entra por Traefik (dominios en Dokploy).
-# Variables (Dokploy → Environment): DOMINIO, ATLAS_REF, MODEL_BASE_URL, MODEL_NAME.
+# Variables (Dokploy → Environment): DOMINIO, ATLAS_REF.
 
 services:
   api:
@@ -27,9 +29,9 @@ services:
         CMD ["uvicorn", "--app-dir", "apps/api", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     restart: unless-stopped
     environment:
-      MODEL_PROVIDER: ${MODEL_PROVIDER:-dmr}
-      MODEL_BASE_URL: ${MODEL_BASE_URL:-http://modelo.invalid:11434}
-      MODEL_NAME: ${MODEL_NAME:-ai/gemma4:E4B}
+      MODEL_PROVIDER: dmr
+      MODEL_BASE_URL: http://ollama:11434/v1
+      MODEL_NAME: gemma2:2b
     expose:
       - "8000"
     volumes:
@@ -45,6 +47,36 @@ services:
         limits:
           cpus: "0.50"
           memory: 320M
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull gemma2:2b
+        wait
+    environment:
+      OLLAMA_KEEP_ALIVE: 5m
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    expose:
+      - "11434"
+    volumes:
+      - modelos:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q gemma2:2b"]
+      interval: 30s
+      timeout: 10s
+      retries: 60
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          cpus: "3.00"
+          memory: 3G
 
   ui:
     build:
@@ -83,3 +115,4 @@ services:
 
 volumes:
   datos:
+  modelos:
