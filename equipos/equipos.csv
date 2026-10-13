@@ -24,3 +24,4 @@ xald,XALD,AS_202620_XALD,master,si,backend/Dockerfile,no,4
 verifacts,Verifacts,AS_202620_Verifacts,master,si,Dockerfile,no,3
 checku,Check_U,check_u,main,no,no,no,1
 atlas,EthosTerra-Atlas,EthosTerra-Atlas,master,no,no,no,1
+levelutb,LevelUTB,LevelUTB,main,no,no,no,1

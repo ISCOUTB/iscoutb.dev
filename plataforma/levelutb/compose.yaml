@@ -1,0 +1,105 @@
+# LevelUTB (github.com/ISCOUTB/LevelUTB) adaptado al servidor del laboratorio.
+#
+# El compose del repositorio es de desarrollo (puertos publicados, "next dev", NEXTAUTH_URL=localhost, .env
+# obligatorio). Aquí cada servicio se construye desde el contexto git sin modificar el repositorio:
+#   - app:  Next.js compilado (next build + next start) con PostgreSQL; al arrancar aplica el esquema
+#           (prisma db push) y siembra las cuentas de demostración solo si la tabla users está vacía;
+#   - external-academic-api: API académica simulada (malla, cursos, insignias), solo red interna;
+#   - db:   PostgreSQL 16.
+# Sin "ports:" ni "container_name": el tráfico público entra por Traefik (dominio en Dokploy).
+# Variables (Dokploy → Environment): DOMINIO, LEVELUTB_REF, POSTGRES_PASSWORD, NEXTAUTH_SECRET, UNIVERSITY_API_KEY.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: levelutb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 160M
+
+  external-academic-api:
+    build:
+      context: https://github.com/ISCOUTB/LevelUTB.git#${LEVELUTB_REF:-main}:utb-external-api
+    restart: unless-stopped
+    environment:
+      PORT: "3001"
+      API_KEY: ${UNIVERSITY_API_KEY}
+      NODE_OPTIONS: --max-old-space-size=96
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('net').createConnection({port:3001,host:'127.0.0.1'},()=>process.exit(0)).on('error',()=>process.exit(1)).setTimeout(2000)\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  app:
+    build:
+      context: https://github.com/ISCOUTB/LevelUTB.git#${LEVELUTB_REF:-main}
+      dockerfile_inline: |
+        FROM node:20-alpine
+        WORKDIR /app
+        RUN chown node:node /app
+        USER node
+        COPY --chown=node:node package.json package-lock.json ./
+        RUN npm ci --ignore-scripts
+        COPY --chown=node:node tsconfig.json next.config.ts postcss.config.mjs eslint.config.mjs prisma.config.ts ./
+        COPY --chown=node:node src ./src
+        COPY --chown=node:node prisma ./prisma
+        COPY --chown=node:node public ./public
+        COPY --chown=node:node scripts ./scripts
+        RUN npm run db:generate
+        ENV NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=1024
+        RUN npm run build
+        ENV NODE_OPTIONS=--max-old-space-size=320
+        EXPOSE 3000
+        CMD ["sh", "-c", "npm run db:push && npm run db:seed-if-empty && npm run start"]
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      external-academic-api:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/levelutb?schema=public
+      UNIVERSITY_API_URL: http://external-academic-api:3001
+      UNIVERSITY_API_ENABLED: "true"
+      UNIVERSITY_API_KEY: ${UNIVERSITY_API_KEY}
+      NEXTAUTH_URL: https://levelutb.${DOMINIO:-iscoutb.dev}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_SECRET: ${NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      HOSTNAME: 0.0.0.0
+      NODE_ENV: production
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('net').createConnection({port:3000,host:'127.0.0.1'},()=>process.exit(0)).on('error',()=>process.exit(1)).setTimeout(2000)\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 448M
+
+volumes:
+  pgdata:
