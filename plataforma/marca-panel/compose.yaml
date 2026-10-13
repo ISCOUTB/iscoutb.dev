@@ -11,6 +11,7 @@ services:
       - ./marca.css:/usr/share/marca/marca.css:ro
       - ./marca.js:/usr/share/marca/marca.js:ro
       - ./favicon.svg:/usr/share/marca/favicon.svg:ro
+      - ./www:/usr/share/www:ro
     networks: [dokploy-network]
     mem_limit: 64m
     cpus: 0.25

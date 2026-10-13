@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Registro DNS de la plataforma en Cloudflare: un wildcard *.<dominio> hacia el servidor.
+# Registro DNS de la plataforma en Cloudflare: un wildcard *.<dominio> y el apex <dominio> hacia el servidor.
 # Con él, panel.<dominio>, <equipo>.<dominio> y <algo>-<equipo>.<dominio> resuelven sin más registros.
 #   ./scripts/11-dns-cloudflare.sh
 # Requiere CLOUDFLARE_API_TOKEN en .env (Zone:DNS:Edit y Zone:Zone:Read sobre la zona).
@@ -22,23 +22,27 @@ zona=$(cf GET "/zones?name=$DOMINIO" 2>/dev/null | jq -r '.result[0].id // empty
 cf GET "/zones/$zona/dns_records?per_page=1" >/dev/null 2>&1 || morir "El token no puede leer los registros DNS (Zone:DNS:Edit)."
 ok "token válido para la zona $DOMINIO"
 
-nombre="*.$DOMINIO"
-actual=$(cf GET "/zones/$zona/dns_records?type=A&name=$(jq -rn --arg n "$nombre" '$n|@uri')" | jq -c '.result[0] // empty')
-deseado=$(jq -cn --arg ip "$IP_PUBLICA" '{type:"A", name:"*", content:$ip, ttl:1, proxied:false,
-  comment:"Dokploy · servidor del laboratorio de Arquitecturas de Software"}')
-
-if [[ -z "$actual" ]]; then
-  cf POST "/zones/$zona/dns_records" "$deseado" >/dev/null
-  ok "creado $nombre → $IP_PUBLICA (DNS only)"
-elif [[ "$(jq -r .content <<<"$actual")" != "$IP_PUBLICA" || "$(jq -r .proxied <<<"$actual")" != "false" ]]; then
-  cf PUT "/zones/$zona/dns_records/$(jq -r .id <<<"$actual")" "$deseado" >/dev/null
-  ok "actualizado $nombre → $IP_PUBLICA (DNS only)"
-else
-  ok "$nombre ya apunta a $IP_PUBLICA"
-fi
+# Wildcard (panel, equipos) y apex (iscoutb.dev, que redirige a www.iscoutb.dev)
+asegurar_a() {
+  local host="$1" nombre="$2" actual deseado
+  actual=$(cf GET "/zones/$zona/dns_records?type=A&name=$(jq -rn --arg n "$nombre" '$n|@uri')" | jq -c '.result[0] // empty')
+  deseado=$(jq -cn --arg ip "$IP_PUBLICA" --arg n "$host" '{type:"A", name:$n, content:$ip, ttl:1, proxied:false,
+    comment:"Dokploy · servidor del laboratorio de Arquitecturas de Software"}')
+  if [[ -z "$actual" ]]; then
+    cf POST "/zones/$zona/dns_records" "$deseado" >/dev/null
+    ok "creado $nombre → $IP_PUBLICA (DNS only)"
+  elif [[ "$(jq -r .content <<<"$actual")" != "$IP_PUBLICA" || "$(jq -r .proxied <<<"$actual")" != "false" ]]; then
+    cf PUT "/zones/$zona/dns_records/$(jq -r .id <<<"$actual")" "$deseado" >/dev/null
+    ok "actualizado $nombre → $IP_PUBLICA (DNS only)"
+  else
+    ok "$nombre ya apunta a $IP_PUBLICA"
+  fi
+}
+asegurar_a "*" "*.$DOMINIO"
+asegurar_a "@" "$DOMINIO"
 
 info "Comprobando resolución pública"
-for h in "$PANEL_HOST" "prueba-$RANDOM.$DOMINIO"; do
+for h in "$DOMINIO" "www.$DOMINIO" "$PANEL_HOST" "prueba-$RANDOM.$DOMINIO"; do
   for _ in $(seq 1 12); do
     [[ " $(resolver_a "$h") " == *" $IP_PUBLICA "* ]] && break
     sleep 5

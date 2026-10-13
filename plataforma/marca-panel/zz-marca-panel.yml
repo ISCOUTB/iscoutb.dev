@@ -1,4 +1,4 @@
-# Marca del panel: desvía panel.iscoutb.dev al proxy "marca-panel" (plataforma/marca-panel).
+# Marca del panel y página de inicio: desvía panel.iscoutb.dev y www.iscoutb.dev al proxy "marca-panel" (plataforma/marca-panel).
 # Dokploy no gestiona este archivo. Para volver al panel original basta borrarlo.
 http:
   routers:
@@ -9,6 +9,35 @@ http:
       service: marca-panel
       tls:
         certResolver: letsencrypt
+    # www.iscoutb.dev: página de inicio pública
+    marca-www-secure:
+      rule: Host(`www.iscoutb.dev`)
+      priority: 100
+      entryPoints: [websecure]
+      service: marca-panel
+      tls:
+        certResolver: letsencrypt
+    marca-www:
+      rule: Host(`www.iscoutb.dev`) || Host(`iscoutb.dev`)
+      priority: 100
+      entryPoints: [web]
+      middlewares: [redirect-to-https@file]
+      service: noop@internal
+    # iscoutb.dev (apex) → www.iscoutb.dev
+    marca-apex-secure:
+      rule: Host(`iscoutb.dev`)
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [apex-a-www]
+      service: noop@internal
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    apex-a-www:
+      redirectRegex:
+        regex: "^https://iscoutb\\.dev/?(.*)"
+        replacement: "https://www.iscoutb.dev/${1}"
+        permanent: true
   services:
     marca-panel:
       loadBalancer:
