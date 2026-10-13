@@ -1,0 +1,16 @@
+# Marca del panel: desvía panel.iscoutb.dev al proxy "marca-panel" (plataforma/marca-panel).
+# Dokploy no gestiona este archivo. Para volver al panel original basta borrarlo.
+http:
+  routers:
+    marca-panel-secure:
+      rule: Host(`panel.iscoutb.dev`)
+      priority: 100
+      entryPoints: [websecure]
+      service: marca-panel
+      tls:
+        certResolver: letsencrypt
+  services:
+    marca-panel:
+      loadBalancer:
+        servers:
+          - url: http://marca-panel:80

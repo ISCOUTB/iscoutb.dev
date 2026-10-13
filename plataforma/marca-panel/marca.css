@@ -1,0 +1,9 @@
+/* Barra de marca fija sobre el panel de Dokploy. */
+body::before {
+  content: "Plataforma ISCOUTB";
+  position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
+  height: 28px; text-align: center;
+  font: 600 13px/28px system-ui, sans-serif; letter-spacing: .04em;
+  background: #0b3d91; color: #fff;
+}
+body { padding-top: 28px; }
