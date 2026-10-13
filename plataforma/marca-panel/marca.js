@@ -1,11 +1,64 @@
-// Next.js reescribe el título al navegar: se mantiene el nombre de la plataforma.
+// Marca del panel de Dokploy. Todo es idempotente y tolera que React vuelva a pintar.
 (function () {
   var NOMBRE = "Plataforma ISCOUTB";
-  function fijar() {
+
+  function titulo() {
     var t = document.title;
     if (t.indexOf(NOMBRE) === -1) document.title = t.replace(/Dokploy/g, NOMBRE) || NOMBRE;
   }
-  fijar();
-  new MutationObserver(fijar).observe(document.querySelector("title") || document.head,
+
+  function texto(el, valor) { if (el && el.textContent !== valor) el.textContent = valor; }
+
+  function login() {
+    var form = document.getElementById("login-form");
+    document.body.classList.toggle("marca-login", !!form);
+    if (!form) return;
+
+    // Panel izquierdo: nombre en lugar del logo de Dokploy y mensaje de bienvenida
+    var enlace = document.querySelector('a[href="/"]');
+    if (enlace && !enlace.querySelector(".marca-nombre")) {
+      var svg = enlace.querySelector("svg");
+      enlace.textContent = "";
+      if (svg) enlace.appendChild(svg);
+      enlace.insertAdjacentHTML("beforeend",
+        '<span><span class="marca-nombre">ISCOUTB</span>' +
+        '<span class="marca-sub">Universidad Tecnológica de Bolívar</span></span>');
+    }
+    var cita = document.querySelector("blockquote p");
+    texto(cita, "Plataforma de despliegue de proyectos del programa de Ingeniería de Sistemas y Computación " +
+                "de la Universidad Tecnológica de Bolívar. Ingresa con tu correo institucional @utb.edu.co.");
+
+    // Formulario
+    var h1 = document.querySelector("h1");
+    if (h1 && h1.lastChild && h1.querySelector("div")) {
+      var cont = h1.querySelector("div");
+      var nodo = cont.lastChild;
+      if (nodo && nodo.nodeType === 3) texto(nodo, "Plataforma ISCOUTB");
+    }
+    var ayuda = h1 && h1.parentElement && h1.parentElement.querySelector("p");
+    texto(ayuda, "Ingresa con tu correo institucional @utb.edu.co y tu contraseña");
+    var correo = form.querySelector('input[name="email"]');
+    if (correo) correo.placeholder = "usuario@utb.edu.co";
+    var clave = form.querySelector('input[name="password"]');
+    if (clave) clave.placeholder = "Tu contraseña";
+    var boton = form.querySelector('button[type="submit"]');
+    if (boton && boton.firstChild && boton.firstChild.nodeType === 3) texto(boton.firstChild, "Ingresar");
+
+    // «Lost your password?» apuntaba a la documentación de Dokploy
+    var perdida = document.querySelector('a[href*="docs.dokploy.com"]');
+    if (perdida) {
+      perdida.removeAttribute("href");
+      perdida.removeAttribute("target");
+      perdida.style.cursor = "default";
+      texto(perdida, "¿Olvidaste tu contraseña? Pídesela a tu docente.");
+    }
+    var passkey = Array.prototype.find.call(document.querySelectorAll("button"),
+      function (b) { return /passkey/i.test(b.textContent); });
+    if (passkey) passkey.style.display = "none";
+  }
+
+  function aplicar() { titulo(); login(); }
+  aplicar();
+  new MutationObserver(aplicar).observe(document.documentElement,
     { childList: true, subtree: true, characterData: true });
 })();

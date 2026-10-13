@@ -7,3 +7,26 @@ body::before {
   background: #0b3d91; color: #fff;
 }
 body { padding-top: 28px; }
+
+/* ---- Página de login (body.marca-login lo pone marca.js cuando existe #login-form) ---- */
+body.marca-login {
+  --primary: 218 87% 31%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 218 87% 31%;
+  --sidebar-ring: 218 87% 31%;
+}
+.dark body.marca-login {
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 217 91% 60%;
+  --sidebar-ring: 217 91% 60%;
+}
+/* logo de Dokploy (el SVG del encabezado izquierdo y el del título «Sign in») */
+body.marca-login a[href="/"] > svg { display: none; }
+body.marca-login h1 svg { display: none; }
+/* redes sociales de Dokploy */
+body.marca-login a[href*="github.com/dokploy"],
+body.marca-login a[href*="x.com/getdokploy"],
+body.marca-login a[href*="discord.com/invite"] { display: none; }
+body.marca-login .marca-nombre { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em; }
+body.marca-login .marca-sub { display: block; font-size: .85rem; font-weight: 500; opacity: .8; }
