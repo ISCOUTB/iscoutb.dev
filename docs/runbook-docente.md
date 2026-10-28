@@ -203,6 +203,7 @@ Umbrales: disco > 75 %, o RAM disponible < 1,5 GB sostenida (`free -h`), o swap 
   aplicó migraciones, restaura además la base: `zcat dokploy-bd.sql.gz | sudo docker exec -i <dokploy-postgres> psql -U dokploy dokploy`
   con el servicio `dokploy` detenido (`docker service scale dokploy=0`).
 - **Historial:** 2026-09-29 v0.30.7 → v0.30.8 (parche de un widget de chat; sin migraciones, API ni Traefik). Sin incidencias.
+  2026-10-28 v0.30.8 → v0.30.10 (etiqueta visual de plantillas y subida de Node; sin migraciones, API ni Traefik). Sin incidencias.
 
 ## Cierre del semestre (después del 30-nov-2026)
 
