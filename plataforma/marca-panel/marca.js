@@ -28,6 +28,16 @@
     texto(cita, "Plataforma de despliegue de proyectos del programa de Ingeniería de Sistemas y Computación " +
                 "de la Universidad Tecnológica de Bolívar. Ingresa con tu correo institucional @utb.edu.co.");
 
+    // Novedades bajo el mensaje de bienvenida
+    var bq = cita && cita.closest("blockquote");
+    if (bq && !document.querySelector(".marca-novedades")) {
+      bq.insertAdjacentHTML("afterend",
+        '<div class="marca-novedades"><strong>Novedades</strong><ul>' +
+        '<li>Cuota por equipo ampliada: ahora <b>6 contenedores y 1 GB de memoria</b> (antes 4 y 512 MB).</li>' +
+        '<li>Más espacio: el servidor ahora tiene <b>200 GB de disco</b>.</li>' +
+        '</ul></div>');
+    }
+
     // Formulario
     var h1 = document.querySelector("h1");
     if (h1 && h1.lastChild && h1.querySelector("div")) {

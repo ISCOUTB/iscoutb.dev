@@ -30,3 +30,11 @@ body.marca-login a[href*="x.com/getdokploy"],
 body.marca-login a[href*="discord.com/invite"] { display: none; }
 body.marca-login .marca-nombre { font-size: 1.6rem; font-weight: 700; letter-spacing: .02em; }
 body.marca-login .marca-sub { display: block; font-size: .85rem; font-weight: 500; opacity: .8; }
+/* Novedades en el panel izquierdo del login */
+body.marca-login .marca-novedades {
+  margin-top: 1.25rem; padding: .75rem 1rem; max-width: 32rem;
+  border-left: 3px solid #fff; background: rgba(255,255,255,.12); border-radius: 0 .375rem .375rem 0;
+  font-size: .875rem; line-height: 1.4;
+}
+body.marca-login .marca-novedades strong { display: block; margin-bottom: .25rem; letter-spacing: .04em; text-transform: uppercase; font-size: .75rem; }
+body.marca-login .marca-novedades ul { margin: 0; padding-left: 1.1rem; list-style: disc; }

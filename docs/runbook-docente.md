@@ -4,7 +4,7 @@
 
 | Pieza | Dónde | Notas |
 |---|---|---|
-| VM | OCI `VM.Standard.E5.Flex` Phoenix, 2 vCPU, 12 GB + 4 GB swap, 45 GB | Ubuntu 26.04 |
+| VM | OCI `VM.Standard.E5.Flex` Phoenix, 2 vCPU, 12 GB + 4 GB swap, 200 GB | Ubuntu 26.04 |
 | Docker | 29.8.1, retenido con `apt-mark hold` | Swarm de un nodo, logs rotados (10 MB × 3) |
 | Dokploy | servicio Swarm `dokploy`, imagen `dokploy/dokploy:v0.30.8` | datos en el volumen `dokploy` y en `/etc/dokploy` |
 | BD de Dokploy | servicio `dokploy-postgres` (postgres:16) | contraseña en el secreto Docker `dokploy_postgres_password` |

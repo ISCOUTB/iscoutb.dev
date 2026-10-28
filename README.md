@@ -210,7 +210,7 @@ Así, además, tienes un historial claro de **qué versión está publicada** y 
 | Estimación de costo mensual | ver abajo |
 
 **Datos para tu estimación de costo:** el servidor es una VM de Oracle Cloud `VM.Standard.E5.Flex` con
-1 OCPU (2 vCPU), 12 GB de RAM y 45 GB de disco, en la región Phoenix, **compartida entre 23 equipos**. Tu
+1 OCPU (2 vCPU), 12 GB de RAM y 200 GB de disco, en la región Phoenix, **compartida entre 23 equipos**. Tu
 equipo usa como máximo 0,5 CPU por contenedor y 1 GB. Estima con la lista de precios pública de Oracle
 Cloud (por OCPU-hora, por GB de RAM-hora y por GB de disco al mes) y declara tus supuestos: fracción
 asignada a tu equipo, horas al mes y en qué punto dejarías de caber en la capa gratuita.
