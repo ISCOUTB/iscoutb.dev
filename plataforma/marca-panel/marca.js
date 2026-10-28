@@ -42,6 +42,9 @@
         '<div class="marca-novedades"><div class="marca-nov-titulo">\uD83C\uDF89 Novedades</div><ul>' +
         '<li><b>Más cuota por equipo:</b> ahora 6 contenedores y 1 GB de memoria (antes 4 y 512 MB).</li>' +
         '<li><b>Más espacio:</b> el servidor ahora tiene 200 GB de disco.</li>' +
+        '<li><b>Nuevo sitio:</b> www.iscoutb.dev es la página de inicio de la plataforma.</li>' +
+        '<li><b>Panel actualizado</b> a Dokploy v0.30.10.</li>' +
+        '<li><b>Servicio restablecido</b> tras el reinicio del servidor.</li>' +
         '</ul></div>');
     }
     var ayuda = h1 && h1.parentElement && h1.parentElement.querySelector("p");
