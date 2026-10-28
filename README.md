@@ -26,7 +26,7 @@ del repositorio, *health check*, logs y una métrica consultable.
 - un usuario en el panel: **tu correo institucional** `@utb.edu.co`;
 - una **contraseña inicial** personal;
 - un **proyecto** con el nombre de tu equipo, con los entornos `production` y `development`;
-- cuota por equipo: **4 contenedores y 512 MB de memoria en total**, 0,5 CPU por contenedor.
+- cuota por equipo: **6 contenedores y 1 GB de memoria en total**, 0,5 CPU por contenedor.
 
 **Necesitas**:
 
@@ -89,7 +89,7 @@ En **tu repositorio** crea `deploy/compose.lab.yaml`. Parte de
 [`plantillas/compose.lab.mysql.yaml`](plantillas/compose.lab.mysql.yaml) (MySQL) y ajusta:
 
 - `build.context` es **relativo a la carpeta `deploy/`**: si tu API está en `backend/`, escribe `../backend`.
-- Cada servicio lleva su límite en `deploy.resources.limits`. La suma del equipo no puede pasar de **512 MB**.
+- Cada servicio lleva su límite en `deploy.resources.limits`. La suma del equipo no puede pasar de **1 GB**.
 - **Sin** `ports:` (usa `expose:`), **sin** `container_name`, **sin** bind mounts, **sin** `privileged`, **sin**
   `/var/run/docker.sock` y **sin** redes externas. Los datos van en **volúmenes con nombre**.
 - Los valores sensibles se escriben como `${NOMBRE}`: el valor real va en el panel (paso 3.5), **nunca**
@@ -211,7 +211,7 @@ Así, además, tienes un historial claro de **qué versión está publicada** y 
 
 **Datos para tu estimación de costo:** el servidor es una VM de Oracle Cloud `VM.Standard.E5.Flex` con
 1 OCPU (2 vCPU), 12 GB de RAM y 45 GB de disco, en la región Phoenix, **compartida entre 23 equipos**. Tu
-equipo usa como máximo 0,5 CPU por contenedor y 512 MB. Estima con la lista de precios pública de Oracle
+equipo usa como máximo 0,5 CPU por contenedor y 1 GB. Estima con la lista de precios pública de Oracle
 Cloud (por OCPU-hora, por GB de RAM-hora y por GB de disco al mes) y declara tus supuestos: fracción
 asignada a tu equipo, horas al mes y en qué punto dejarías de caber en la capa gratuita.
 
@@ -241,7 +241,7 @@ asignada a tu equipo, horas al mes y en qué punto dejarías de caber en la capa
 | **Next.js:** la app no encuentra la API | Las variables `NEXT_PUBLIC_*` se fijan al **compilar**: pásalas como `build args`. Las de servidor sí pueden ir en **Environment**. |
 | **CORS:** el navegador bloquea las llamadas a `api-<slug>` | Habilita CORS en tu API para `https://<slug>.iscoutb.dev`, o publica todo bajo un solo host con `/api`. |
 | **MinIO:** `unauthorized` al descargar `quay.io/minio/minio` | MinIO dejó de publicar esas imágenes y el proyecto está archivado. Para archivos usa otro almacén compatible con S3 (Garage, RustFS) o el almacenamiento de un proveedor; tu código no cambia, solo las variables `S3_*`. Ejemplo de referencia: [`plataforma/capstonehub/`](plataforma/capstonehub/). |
-| **Kafka** | No cabe en 512 MB y no está permitido. Usa RabbitMQ, NATS o Redis Streams. |
+| **Kafka** | No cabe en la cuota y no está permitido. Usa RabbitMQ, NATS o Redis Streams. |
 
 Si algo no se resuelve con esta tabla, pregunta al docente con el **mensaje de error completo** y la
 pestaña **Deployments** abierta: es lo primero que se revisa.

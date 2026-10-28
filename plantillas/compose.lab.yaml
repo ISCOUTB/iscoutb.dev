@@ -8,7 +8,7 @@
 #   - Sin "ports:": Traefik enruta el tráfico público; usa "expose".
 #   - Sin bind mounts, docker.sock ni privileged: solo volúmenes con nombre.
 #   - Sin container_name ni redes externas (Isolated Deployment crea la red del equipo).
-#   - Límites en cada servicio: el total del equipo no pasa de 512 MB.
+#   - Límites en cada servicio: el total del equipo no pasa de 1 GB.
 #   - Secretos en Dokploy → Environment. Aquí solo se referencian con ${VARIABLE}.
 
 services:

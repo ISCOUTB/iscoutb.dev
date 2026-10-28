@@ -28,6 +28,6 @@ for linea in sys.stdin:
     e[0] += 1; e[1] += float(cpu.rstrip("%")); e[2] += mib(mem.split("/")[0])
 print("%-16s%6s%9s%10s" % ("equipo", "cont.", "CPU %", "RAM MiB"))
 for eq, (n, cpu, mem) in sorted(equipos.items(), key=lambda x: -x[1][2]):
-    alerta = "  ← supera 512 MiB" if eq != "plataforma" and mem > 512 else ""
+    alerta = "  ← supera 1024 MiB" if eq != "plataforma" and mem > 1024 else ""
     print(f"{eq:<16}{n:>6}{cpu:>9.1f}{mem:>10.0f}{alerta}")
 '

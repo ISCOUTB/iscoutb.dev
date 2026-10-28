@@ -8,7 +8,7 @@ estas reglas; su incumplimiento puede llevar a detener tus servicios sin aviso p
 
 - El sistema de tu equipo: API, base de datos, frontend web, broker de mensajes y trabajos del proyecto.
 - **Un proyecto por equipo**, con los entornos `production` y `development`.
-- **Cuota por equipo:** como máximo **4 contenedores** y **512 MB de memoria sumando los límites**,
+- **Cuota por equipo:** como máximo **6 contenedores** y **1 GB de memoria sumando los límites**,
   con 0,5 CPU por contenedor como máximo.
 - Brokers permitidos: RabbitMQ, NATS o Redis Streams. **Kafka no** (no cabe en la cuota).
 - Las apps móviles (Flutter, Kotlin) no se despliegan aquí: apuntan a la URL pública de tu API.

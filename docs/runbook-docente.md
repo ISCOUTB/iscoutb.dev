@@ -130,7 +130,7 @@ tail reportes/sincronizacion.log           # cambios de permisos
 
 - Hallazgo de auditoría: pide la corrección al equipo; si es grave (docker.sock, privileged),
   detén el servicio en el panel (*Stop*) de inmediato.
-- Un equipo por encima de 512 MB: revisa los límites de su compose.
+- Un equipo por encima de 1 GB: revisa los límites de su compose.
 
 ## Altas, bajas y cambios
 
