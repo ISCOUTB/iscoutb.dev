@@ -1,0 +1,90 @@
+# Modelo de Medición de Grupos de Investigación (ISCOUTB/ModeloMedicionGruposInvestigacion, rama develop)
+# adaptado al servidor del laboratorio.
+#
+# El compose del repositorio es de desarrollo: 8 contenedores (Neo4j, dos MongoDB, Adminer, worker…), puertos
+# publicados en el host y container_name fijos; no cabe en la cuota del equipo. Aquí se despliega el núcleo:
+#   - api:      FastAPI + frontend React (se sirve en /app); crea las tablas al arrancar (DEBUG=True);
+#   - postgres: base relacional;  redis: caché de estado.
+# NO incluye worker Celery, MongoDB ni Neo4j: el pipeline asíncrono de extracción/auditoría/evaluación
+# no funciona en esta instalación. Habilitarlo exige más cuota (Neo4j solo necesita ~600 MB).
+#
+# El repositorio es privado: Dokploy lo clona con la GitHub App en ../code y este archivo (montado como
+# archivo del servicio en ../files) lo construye desde ahí. Sin "ports:" ni "container_name": el tráfico
+# entra por Traefik. Variables (Dokploy → Environment): DOMINIO, POSTGRES_PASSWORD, SECRET_KEY.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: medicion
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d medicion"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 192M
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 48mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+
+  api:
+    build:
+      context: ../code
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/medicion
+      POSTGRES_SERVER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: medicion
+      REDIS_URL: redis://redis:6379/0
+      celery_broker_url: redis://redis:6379/0
+      celery_result_backend: redis://redis:6379/1
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      # Necesario: con DEBUG el arranque crea las tablas (el repo no trae migraciones aplicadas al iniciar)
+      DEBUG: "True"
+      DB_POOL_SIZE: "5"
+      DB_MAX_OVERFLOW: "2"
+      PIPELINE_DISPARAR_AUDITORIA: "false"
+      PIPELINE_DISPARAR_EVALUACION: "false"
+      PIPELINE_PERSISTIR_GRAFO: "false"
+      PYTHONPATH: /srv/app/src:/srv/app/src/backend:/srv/app/src/backend/workers
+    expose:
+      - "8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 448M
+
+volumes:
+  pgdata:
+  redisdata:

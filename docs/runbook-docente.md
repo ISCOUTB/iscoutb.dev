@@ -6,7 +6,7 @@
 |---|---|---|
 | VM | OCI `VM.Standard.E5.Flex` Phoenix, 2 vCPU, 12 GB + 4 GB swap, 200 GB | Ubuntu 26.04 |
 | Docker | 29.8.1, retenido con `apt-mark hold` | Swarm de un nodo, logs rotados (10 MB × 3) |
-| Dokploy | servicio Swarm `dokploy`, imagen `dokploy/dokploy:v0.30.8` | datos en el volumen `dokploy` y en `/etc/dokploy` |
+| Dokploy | servicio Swarm `dokploy`, imagen `dokploy/dokploy:v0.31.0` | datos en el volumen `dokploy` y en `/etc/dokploy` |
 | BD de Dokploy | servicio `dokploy-postgres` (postgres:16) | contraseña en el secreto Docker `dokploy_postgres_password` |
 | Proxy | contenedor `dokploy-traefik` (traefik v3.6.25) | wildcard `*.iscoutb.dev` por DNS-01; `acme.json` en `/etc/dokploy/traefik/dynamic/` |
 | DNS | Cloudflare, zona `iscoutb.dev` | un solo registro `*.iscoutb.dev` A hacia la IP pública de la VM, *DNS only* |
@@ -17,7 +17,7 @@ el `INPUT` de iptables, así que **no abras otros puertos en OCI**: es la única
 
 ## Estado actual y pendientes (29-sep-2026)
 
-**Listo:** servidor, Docker, Dokploy v0.30.8, certificado wildcard, panel en `https://panel.iscoutb.dev`, GitHub App,
+**Listo:** servidor, Docker, Dokploy v0.31.0, certificado wildcard, panel en `https://panel.iscoutb.dev`, GitHub App,
 23 proyectos, **86 cuentas de estudiantes** y el servicio Compose `sistema` de **cada uno de los 23 equipos**
 (origen GitHub, aislamiento y despliegue automático activados). Manual para estudiantes publicado en el
 repositorio `ISCOUTB/iscoutb.dev`.
@@ -204,6 +204,7 @@ Umbrales: disco > 75 %, o RAM disponible < 1,5 GB sostenida (`free -h`), o swap 
   con el servicio `dokploy` detenido (`docker service scale dokploy=0`).
 - **Historial:** 2026-09-29 v0.30.7 → v0.30.8 (parche de un widget de chat; sin migraciones, API ni Traefik). Sin incidencias.
   2026-10-28 v0.30.8 → v0.30.10 (etiqueta visual de plantillas y subida de Node; sin migraciones, API ni Traefik). Sin incidencias.
+  2026-11-05 v0.30.10 → v0.31.0 (versión menor adelantada a petición, con respaldo previo; 3 migraciones, cambios en routers de la API). Panel, permisos y servicios verificados tras la actualización.
 
 ## Cierre del semestre (después del 30-nov-2026)
 
