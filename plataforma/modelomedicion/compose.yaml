@@ -5,6 +5,7 @@
 # publicados en el host y container_name fijos; no cabe en la cuota del equipo. Aquí se despliega el núcleo:
 #   - api:      FastAPI + frontend React (se sirve en /app); crea las tablas al arrancar (DEBUG=True);
 #   - postgres: base relacional;  redis: caché de estado.
+# Límites ampliados por excepción (≈1,5 GB en total, por encima de la cuota estándar de 1 GB).
 # NO incluye worker Celery, MongoDB ni Neo4j: el pipeline asíncrono de extracción/auditoría/evaluación
 # no funciona en esta instalación. Habilitarlo exige más cuota (Neo4j solo necesita ~600 MB).
 #
@@ -30,13 +31,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.50"
-          memory: 192M
+          cpus: "1.00"
+          memory: 384M
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 48mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 96mb --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
     healthcheck:
@@ -47,8 +48,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.25"
-          memory: 64M
+          cpus: "0.50"
+          memory: 128M
 
   api:
     build:
@@ -71,8 +72,8 @@ services:
       ENVIRONMENT: production
       # Necesario: con DEBUG el arranque crea las tablas (el repo no trae migraciones aplicadas al iniciar)
       DEBUG: "True"
-      DB_POOL_SIZE: "5"
-      DB_MAX_OVERFLOW: "2"
+      DB_POOL_SIZE: "10"
+      DB_MAX_OVERFLOW: "5"
       PIPELINE_DISPARAR_AUDITORIA: "false"
       PIPELINE_DISPARAR_EVALUACION: "false"
       PIPELINE_PERSISTIR_GRAFO: "false"
@@ -82,8 +83,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.75"
-          memory: 448M
+          cpus: "1.50"
+          memory: 1024M
 
 volumes:
   pgdata:
