@@ -80,6 +80,19 @@ services:
       PYTHONPATH: /srv/app/src:/srv/app/src/backend:/srv/app/src/backend/workers
     expose:
       - "8000"
+    # Enrutado público: /api/v1 (y /health, /app) llegan a la API tal cual; cualquier otra ruta (/, /assets/…)
+    # se reescribe a /app/… para servir el frontend en la raíz. La app usa rutas relativas y hash-routing,
+    # así que funciona colgada de /. Este router (priority 100) complementa el que crea Dokploy para el dominio.
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.mm-raiz.rule=Host(`modelomedicion.${DOMINIO}`) && !PathPrefix(`/api`) && !PathPrefix(`/app`) && !PathPrefix(`/health`)
+      - traefik.http.routers.mm-raiz.priority=100
+      - traefik.http.routers.mm-raiz.entrypoints=websecure
+      - traefik.http.routers.mm-raiz.tls.certresolver=letsencrypt
+      - traefik.http.routers.mm-raiz.middlewares=mm-a-app
+      - traefik.http.routers.mm-raiz.service=mm-raiz
+      - traefik.http.middlewares.mm-a-app.addprefix.prefix=/app
+      - traefik.http.services.mm-raiz.loadbalancer.server.port=8000
     deploy:
       resources:
         limits:
