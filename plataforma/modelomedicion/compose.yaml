@@ -78,6 +78,10 @@ services:
       PIPELINE_DISPARAR_EVALUACION: "false"
       PIPELINE_PERSISTIR_GRAFO: "false"
       PYTHONPATH: /srv/app/src:/srv/app/src/backend:/srv/app/src/backend/workers
+    # /tmp en RAM con tope: un proceso que no limpia sus temporales no puede llenar el disco del servidor
+    # (cuenta contra el límite de memoria del servicio).
+    tmpfs:
+      - /tmp:size=64m
     expose:
       - "8000"
     # Enrutado público: /api/v1 (y /health, /app) llegan a la API tal cual; cualquier otra ruta (/, /assets/…)

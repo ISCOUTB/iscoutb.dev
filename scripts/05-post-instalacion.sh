@@ -34,6 +34,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 */5 * * * * $usuario $RAIZ/scripts/13-sincronizar-permisos.py --silencioso >> $RAIZ/reportes/sincronizacion.log 2>&1
 # Auditoría de seguridad y límites, lunes 07:00.
 0 7 * * 1 root $RAIZ/scripts/20-auditar-servicios.sh >> $RAIZ/reportes/auditoria.log 2>&1
+# Vigilancia de disco y limpieza de imágenes/caché sin uso, diario 03:30.
+30 3 * * * root $RAIZ/scripts/26-vigilar-disco.sh --limpiar >> $RAIZ/reportes/disco.log 2>&1
 CRON
 chmod 644 /etc/cron.d/dokploy-plataforma
 ok "cron instalado en /etc/cron.d/dokploy-plataforma"

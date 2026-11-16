@@ -9,6 +9,8 @@
 #   - Sin bind mounts, docker.sock ni privileged: solo volúmenes con nombre.
 #   - Sin container_name ni redes externas (Isolated Deployment crea la red del equipo).
 #   - Límites en cada servicio: el total del equipo no pasa de 1 GB.
+#   - Disco: "tmpfs: /tmp:size=…" en servicios que escriben temporales (Neo4j, Java, OCR…) y, en los que
+#     fallan al arrancar, "restart: on-failure:5" en vez de unless-stopped (un bucle de reinicios llena el disco).
 #   - Secretos en Dokploy → Environment. Aquí solo se referencian con ${VARIABLE}.
 
 services:
@@ -20,6 +22,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       LOG_FORMAT: json
       # Otras variables de la API: agrégalas en Dokploy y referéncialas aquí.
+    # /tmp en RAM con tope: un proceso que no limpia sus temporales no puede llenar el disco del servidor
+    # (cuenta contra el límite de memoria del servicio).
+    tmpfs:
+      - /tmp:size=64m
     expose:
       - "8000"
     depends_on:

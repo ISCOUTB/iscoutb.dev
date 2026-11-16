@@ -150,6 +150,7 @@ Umbrales: disco > 75 %, o RAM disponible < 1,5 GB sostenida (`free -h`), o swap 
   `sudo growpart /dev/sda 1 && sudo resize2fs /dev/sda1`.
 - **RAM/CPU:** OCI → Instance → *Edit shape* (1 → 2 OCPU, 12 → 24 GB). **Requiere reinicio**:
   hazlo fuera de semanas de entrega. La semana 12 (brokers) es el punto de riesgo.
+- **Vigilancia automática:** `scripts/26-vigilar-disco.sh --limpiar` corre a diario (03:30, `reportes/disco.log`): avisa de contenedores con capa escribible > 5 GB, borra la fuga de `/tmp` de Neo4j y poda imágenes/caché sin uso > 7 días. Con `sudo docker ps -s` se ve quién escribe fuera de volúmenes (el tamaño de volúmenes sale de `docker system df -v`).
 - **Alivio inmediato:** `docker builder prune -af` y `docker image prune -af` liberan caché de builds.
 
 ## Copias de seguridad

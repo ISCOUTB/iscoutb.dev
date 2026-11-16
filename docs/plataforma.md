@@ -33,6 +33,7 @@ Internet ─► Cloudflare DNS (*.iscoutb.dev, DNS only) ─► OCI Security Lis
 | `scripts/13-sincronizar-permisos.py` | Comparte con todo el equipo los servicios de su proyecto (cron) |
 | `scripts/20-auditar-servicios.sh` | docker.sock, bind mounts, privileged, puertos, límites y dominios ajenos (cron) |
 | `scripts/21-estado-capacidad.sh` | Consumo por equipo y disco |
+| `scripts/26-vigilar-disco.sh` | Alerta y limpieza diaria de disco (cron) |
 | `scripts/22-verificar-despliegues.sh` | URL y health de cada equipo con el formato de las fichas |
 | `plataforma/capstonehub/` | Compose adaptado de CapstoneHUB y notas de las adaptaciones |
 | `plantillas/` | `compose.lab.yaml` (Postgres/MySQL) y Dockerfiles para los equipos |

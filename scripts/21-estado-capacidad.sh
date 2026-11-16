@@ -13,6 +13,9 @@ uso=$(df --output=pcent / | tail -1 | tr -dc '0-9')
 info "Docker"
 docker system df
 
+info "Contenedores que más escriben fuera de volúmenes (capa escribible)"
+docker ps -s --format '{{.Size}}\t{{.Names}}' | sort -hr | head -5
+
 info "Consumo por equipo (contenedores en ejecución)"
 docker stats --no-stream --format '{{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}' | python3 -c '
 import re, sys
