@@ -32,6 +32,9 @@ estas reglas; su incumplimiento puede llevar a detener tus servicios sin aviso p
 - Una **auditoría semanal** revisa montajes, privilegios, puertos, límites y dominios de todos
   los servicios; el docente recibe el reporte.
 - Limpieza diaria de imágenes y caché de compilación sin uso.
+- **Inactividad:** un proyecto sin visitas ni despliegues durante **30 días** se detiene (sus datos se
+  conservan; pide al docente que lo reactive). Una cuenta que no inicia sesión en el panel durante
+  **90 días** se bloquea.
 - Solo hay **2 compilaciones en paralelo**: en las horas previas a un cierre habrá cola.
   Despliega con tiempo.
 

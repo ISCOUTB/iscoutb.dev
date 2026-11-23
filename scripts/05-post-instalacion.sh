@@ -36,6 +36,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 0 7 * * 1 root $RAIZ/scripts/20-auditar-servicios.sh >> $RAIZ/reportes/auditoria.log 2>&1
 # Vigilancia de disco y limpieza de imágenes/caché sin uso, diario 03:30.
 30 3 * * * root $RAIZ/scripts/26-vigilar-disco.sh --limpiar >> $RAIZ/reportes/disco.log 2>&1
+# Inactividad: anota el tráfico de cada proyecto (el log de Traefik rota en horas) y, a diario 04:00,
+# detiene proyectos sin uso 30 días y bloquea cuentas de estudiantes sin iniciar sesión 90 días.
+*/15 * * * * root $RAIZ/scripts/27-suspender-inactivos.py --registrar >> $RAIZ/reportes/inactividad.log 2>&1
+0 4 * * * root $RAIZ/scripts/27-suspender-inactivos.py --aplicar >> $RAIZ/reportes/inactividad.log 2>&1
 CRON
 chmod 644 /etc/cron.d/dokploy-plataforma
 ok "cron instalado en /etc/cron.d/dokploy-plataforma"
